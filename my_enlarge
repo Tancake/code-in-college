@@ -1,0 +1,87 @@
+function result = my_enlarge(varargin)
+%Image 将当前文件夹下名为'Image.jpg'的图片横向纵向各放大三倍。
+%      原理
+%      ——
+%      本程序运用卷积采用线性内插的方式对图片进行放大，并生成放大后的图片。
+%      核心函数为imread，size，zeros，im2double，im2uint8，imwrite
+%
+%      函数调用
+%      ————
+%      result = my_enlarge（filename, fmt, HOR,VER）
+%      函数返回值result为图片像素点数据矩阵，filename与fmt分别为图片名与图片格式，基本支持imread函数支持的所有图片格式。
+%      HOR为横向放大倍数，VER为纵向放大倍数
+%
+%      作者：俞一腾
+
+
+
+%HOR是图片横向放大倍数，VER是纵向放大倍数，HOR、VER均须是整数
+[filename, fmt, HOR,VER] = varargin{:};
+
+%x_h是行数据的卷积对象
+for n = 1:HOR*2-1
+    if n <= HOR
+        x_h(n) = n/HOR;
+    else
+        x_h(n) = 2-n/HOR;
+    end
+end
+
+%y_h是列数据的卷积对象
+for n = 1:VER*2-1
+    if n <= VER
+        y_h(n) = n/VER;
+    else
+        y_h(n) = 2-n/VER;
+    end
+end
+
+%将斑马灰度图信息读入并获得其行列数
+Image = imread(filename ,fmt);
+Image_row   = size(Image ,1);
+Image_line  = size(Image ,2);
+Image_layer = size(Image ,3);
+
+for m = 1:Image_layer
+    
+    %将图片数据之间按照放大倍数插入0保存为temp。注意！横向的放大是列数的放大，纵向的放大是行数的放大！
+    temp = zeros(Image_row * VER, Image_line * HOR ,'uint8');
+
+    for i = 1:Image_row
+        for j = 1:Image_line
+            temp(i * VER,j * HOR) = Image(i,j,m);
+        end
+    end
+
+
+    %将temp转为双精度类型防止uint8类型在运算时溢出。
+    temp = im2double(temp);
+
+    %将temp含非零数据的行进行线性内插，保存为temp1；
+    for i = 1 : Image_row
+        temp1(i*VER,:)=conv(temp(i*VER,:),x_h);
+    end
+
+    %将temp1的纵列数据进行线性内插，保存为temp2；
+    for i = 1 : Image_line *HOR
+        temp2(:,i)=conv(temp1(:,i),y_h);
+    end
+
+    %删除无效数据
+    for i = 1:HOR-1
+        temp2(1,:) = [];
+    end
+
+    for i= 1:VER-1
+        temp2(:,1) = [];
+    end
+
+    %将temp2进行数据类型转换保存为result以写入图片文件。
+    result(:,:,m) = im2uint8(temp2);
+    
+    %清除上一个图层保存在temp2中的数据
+    clear temp2;
+end
+
+
+end
